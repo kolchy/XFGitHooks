@@ -1,0 +1,29 @@
+#!/bin/sh
+
+PROJECT_NAME=`basename \`pwd\``
+PROJECT_DIR=`pwd`
+PLIST="${PROJECT_DIR}/iOS/Info.plist"
+
+# Set the version to the number of commits in the repo
+SHORTVERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "${PLIST}")
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "${PLIST}")
+if [[ "${SHORTVERSION}" == "" ]]; then
+        echo "No build number in $plist"
+        exit 2
+fi
+
+NEWVERSION=$(git describe --tag | awk 'BEGIN { FS = "-" }; {print $1"."$2}' | awk 'BEGIN { FS = "v"}; {print $2}')
+if [[ "${VERSION}" == "${NEWVERSION}" ]]; then
+        echo "No change to build number."
+        exit 0
+fi
+
+/usr/libexec/Plistbuddy -c "Set CFBundleVersion $NEWVERSION" "${PLIST}"
+/usr/libexec/Plistbuddy -c "Set CFBundleShortVersionString $NEWVERSION" "${PLIST}"
+echo "Bumped build number to $NEWVERSION"
+
+# Add modified plist to the staging area
+cd ${PROJECT_DIR}
+git add ${PLIST}
+
+exit 0
