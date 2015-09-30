@@ -2,7 +2,9 @@
 
 PROJECT_NAME=`basename \`pwd\``
 PROJECT_DIR=`pwd`
+
 PLIST="${PROJECT_DIR}/iOS/Info.plist"
+MANIFEST="${PROJECT_DIR}/Droid/Properties/AndroidManifest.xml"
 
 # Set the version to the number of commits in the repo
 SHORTVERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "${PLIST}")
@@ -13,6 +15,8 @@ if [[ "${SHORTVERSION}" == "" ]]; then
 fi
 
 NEWVERSION=$(git describe --tag | awk 'BEGIN { FS = "-" }; {print $1"."$2}' | awk 'BEGIN { FS = "v"}; {print $2}')
+BUILDNUMBER=$(git describe --tag | awk 'BEGIN { FS = "-" }; {print $2}')
+
 if [[ "${VERSION}" == "${NEWVERSION}" ]]; then
         echo "No change to build number."
         exit 0
@@ -20,10 +24,16 @@ fi
 
 /usr/libexec/Plistbuddy -c "Set CFBundleVersion $NEWVERSION" "${PLIST}"
 /usr/libexec/Plistbuddy -c "Set CFBundleShortVersionString $NEWVERSION" "${PLIST}"
+
+sed "s/android:versionCode=\"[0-9][0-9]*\"/android:versionCode=\"${BUILDNUMBER}\"/" "${MANIFEST}" > "${MANIFEST}.tmp" && mv "${MANIFEST}.tmp" "${MANIFEST}"
+sed "s/android:versionName=\".*\"/android:versionName=\"${NEWVERSION}\"/" "${MANIFEST}" > "${MANIFEST}.tmp" && mv "${MANIFEST}".tmp "${MANIFEST}"
+
 echo "Bumped build number to $NEWVERSION"
 
 # Add modified plist to the staging area
+echo "cd ${PROJECT_DIR}"
 cd ${PROJECT_DIR}
 git add ${PLIST}
+git add ${MANIFEST}
 
 exit 0
